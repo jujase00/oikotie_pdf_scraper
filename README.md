@@ -64,4 +64,64 @@ Here are all the listing types you can use with the `--type` parameter:
 
 ## Note
 
-The location parameter is case-insensitive, and the script handles special Finnish characters (ä, ö, å) in both the URL and the provided location parameter. "# oikotie-pdf-scaper" 
+The location parameter is case-insensitive, and the script handles special Finnish characters (ä, ö, å) in both the URL and the provided location parameter.
+
+# Oikotie PDF Downloader
+
+This script (`oikotie_downloader_viaURL.py`) allows you to download PDF brochures from Oikotie property listings and optionally extract text from them.
+
+## Usage
+
+You can use the script in two ways: via command line or by importing it in Python.
+
+### Command Line
+
+#### Process a single URL:
+```bash
+python oikotie_downloader_viaURL.py --url "https://asunnot.oikotie.fi/..." [--output output.txt] [--keep-pdfs]
+```
+
+#### Process a list of URLs from a file:
+```bash
+python oikotie_downloader_viaURL.py --file URL_LIST/oikotie_listing_urls.txt [--keep-pdfs]
+```
+
+### Parameters
+
+- `--url` or `-u`: Single Oikotie URL to process
+- `--file` or `-f`: File containing Oikotie URLs to process (one URL per line)
+- `--output` or `-o`: Output path for extracted text content (only for single URL)
+- `--keep-pdfs` or `-k`: Keep the downloaded PDFs (by default they are deleted after text extraction)
+
+### Python Import
+
+You can also use the script by importing it in your Python code:
+
+```python
+import oikotie_downloader_viaURL
+
+# Process a single URL
+text_content, pdf_path = oikotie_downloader_viaURL.get_property_info(
+    url="https://asunnot.oikotie.fi/...", 
+    keep_pdf=True,  # Keep the PDF (default: False)
+    verbose=True    # Show progress messages (default: True)
+)
+
+# Process a list of URLs from a file
+successful_urls = oikotie_downloader_viaURL.process_url_list(
+    url_list_file="URL_LIST/oikotie_listing_urls.txt",
+    keep_pdfs=True  # Keep the downloaded PDFs (default: True)
+)
+```
+
+## Output
+
+- PDFs are saved to the `PDFs` directory with filenames based on the listing ID
+- When processing a URL list, reports of successful and failed URLs are saved to the `DONE_URLs` directory
+- Text content is either displayed on the console, saved to a specified file, or returned as a string when imported as a module
+
+## Workflow Example
+
+1. Filter URLs with `filter_oikotie_urls.py`
+2. Process the filtered URLs with `oikotie_downloader_viaURL.py`
+3. Analyze the extracted text or work with the downloaded PDFs 
