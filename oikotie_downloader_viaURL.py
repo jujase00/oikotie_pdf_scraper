@@ -48,13 +48,14 @@ def convert_to_showcase_url(url):
     return f"https://asunnot.oikotie.fi/nayttoesite/{property_id}"
 
 
-def download_pdf(showcase_url, output_path=None, listing_id=None):
+def download_pdf(showcase_url, output_path=None, listing_id=None, pdf_subfolder=None):
     """Download the PDF from the showcase URL.
     
     Args:
         showcase_url (str): The showcase URL to download the PDF from
         output_path (str, optional): Path to save the PDF. If None, uses a temporary file.
         listing_id (str, optional): The listing ID to use in the filename
+        pdf_subfolder (str, optional): Subfolder within PDFs directory to save the file
         
     Returns:
         str: Path to the downloaded PDF file
@@ -76,6 +77,12 @@ def download_pdf(showcase_url, output_path=None, listing_id=None):
             # Create PDFs directory if it doesn't exist
             os.makedirs('PDFs', exist_ok=True)
             
+            # If a subfolder is specified, create it and adjust the path
+            pdf_dir = 'PDFs'
+            if pdf_subfolder:
+                pdf_dir = os.path.join('PDFs', pdf_subfolder)
+                os.makedirs(pdf_dir, exist_ok=True)
+            
             # Use listing ID for filename if provided
             if listing_id:
                 filename = f"oikotie_{listing_id}.pdf"
@@ -89,7 +96,7 @@ def download_pdf(showcase_url, output_path=None, listing_id=None):
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                     filename = f"oikotie_{timestamp}.pdf"
             
-            output_path = os.path.join('PDFs', filename)
+            output_path = os.path.join(pdf_dir, filename)
         
         # Write the PDF content to the file
         with open(output_path, 'wb') as f:
@@ -132,12 +139,13 @@ def extract_text_from_pdf(pdf_path):
         raise
 
 
-def process_oikotie_url(url, keep_pdf=False):
+def process_oikotie_url(url, keep_pdf=False, pdf_subfolder=None):
     """Process an Oikotie URL to download the PDF and convert it to text.
     
     Args:
         url (str): Original Oikotie property URL
         keep_pdf (bool): Whether to keep the PDF file after processing
+        pdf_subfolder (str, optional): Subfolder within PDFs directory to save the file
         
     Returns:
         tuple: (text_content, pdf_path) where text_content is the extracted text
@@ -157,7 +165,7 @@ def process_oikotie_url(url, keep_pdf=False):
         showcase_url = convert_to_showcase_url(url)
         
         # Download the PDF
-        pdf_path = download_pdf(showcase_url, listing_id=listing_id)
+        pdf_path = download_pdf(showcase_url, listing_id=listing_id, pdf_subfolder=pdf_subfolder)
         
         # Extract text from the PDF
         text_content = extract_text_from_pdf(pdf_path)
@@ -184,7 +192,7 @@ def process_oikotie_url(url, keep_pdf=False):
         raise
 
 
-def get_property_info(url, keep_pdf=False, verbose=True):
+def get_property_info(url, keep_pdf=False, verbose=True, pdf_subfolder=None):
     """Main function to get property information from an Oikotie URL.
     
     This is the recommended function to use when importing this module.
@@ -193,6 +201,7 @@ def get_property_info(url, keep_pdf=False, verbose=True):
         url (str): Original Oikotie property URL
         keep_pdf (bool): Whether to keep the PDF file after processing
         verbose (bool): Whether to print progress messages
+        pdf_subfolder (str, optional): Subfolder within PDFs directory to save the file
         
     Returns:
         tuple: (text_content, pdf_path) where text_content is the extracted text
@@ -211,7 +220,7 @@ def get_property_info(url, keep_pdf=False, verbose=True):
     
     try:
         # Process the URL and get the property information
-        return process_oikotie_url(url, keep_pdf)
+        return process_oikotie_url(url, keep_pdf, pdf_subfolder=pdf_subfolder)
     finally:
         # Restore the original print function
         globals()['print'] = original_print
@@ -240,12 +249,22 @@ def process_url_list(url_list_file, keep_pdfs=True):
         
         print(f"Found {len(urls)} URLs in {url_list_file}")
         
+        # Create a timestamp for file naming
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Get the base name of the input file (without directory and extension)
+        base_name = os.path.splitext(os.path.basename(url_list_file))[0]
+        
+        # Create a unique subfolder for this URL list's PDFs
+        pdf_subfolder = f"{base_name}_{timestamp}"
+        print(f"Creating PDF subfolder: PDFs/{pdf_subfolder}")
+        
         # Process each URL
         for i, url in enumerate(urls):
             print(f"\nProcessing URL {i+1}/{len(urls)}: {url}")
             try:
-                # Process the URL
-                _, pdf_path = process_oikotie_url(url, keep_pdf=keep_pdfs)
+                # Process the URL with the specific subfolder
+                _, pdf_path = process_oikotie_url(url, keep_pdf=keep_pdfs, pdf_subfolder=pdf_subfolder)
                 
                 # If a PDF was successfully downloaded, add the URL to the successful list
                 if pdf_path:
@@ -261,14 +280,8 @@ def process_url_list(url_list_file, keep_pdfs=True):
                 print(f"Error processing URL: {url}")
                 print(f"Error: {e}")
         
-        # Create a timestamp for the output files
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
         # Create DONE_URLs directory if it doesn't exist
         os.makedirs('DONE_URLs', exist_ok=True)
-        
-        # Get the base name of the input file (without directory and extension)
-        base_name = os.path.splitext(os.path.basename(url_list_file))[0]
         
         # Save the successful URLs to a file
         if successful_urls:
@@ -278,6 +291,7 @@ def process_url_list(url_list_file, keep_pdfs=True):
                     f.write(f"{url}\n")
             print(f"\nSuccessfully processed {len(successful_urls)} URLs")
             print(f"Successful URLs saved to: {success_file}")
+            print(f"PDFs saved to: PDFs/{pdf_subfolder}/")
         else:
             print("\nNo URLs were successfully processed")
         
@@ -306,6 +320,7 @@ if __name__ == "__main__":
     
     parser.add_argument('--output', '-o', help='Output path for text content (only for single URL)')
     parser.add_argument('--keep-pdfs', '-k', action='store_true', help='Keep the downloaded PDFs')
+    parser.add_argument('--subfolder', '-s', help='Specify a custom subfolder name for PDFs (only for single URL)')
     
     args = parser.parse_args()
     
@@ -314,7 +329,7 @@ if __name__ == "__main__":
         
         if args.url:
             # Process a single URL
-            text_content, pdf_path = process_oikotie_url(args.url, keep_pdf=args.keep_pdfs)
+            text_content, pdf_path = process_oikotie_url(args.url, keep_pdf=args.keep_pdfs, pdf_subfolder=args.subfolder)
             
             # If output path is provided, write to file
             if args.output:

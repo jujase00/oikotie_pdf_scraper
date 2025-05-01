@@ -117,8 +117,16 @@ successful_urls = oikotie_downloader_viaURL.process_url_list(
 ## Output
 
 - PDFs are saved to the `PDFs` directory with filenames based on the listing ID
+  - When processing a URL list, PDFs are saved to a subfolder within `PDFs` directory named `{input_filename}_{timestamp}`
 - When processing a URL list, reports of successful and failed URLs are saved to the `DONE_URLs` directory
 - Text content is either displayed on the console, saved to a specified file, or returned as a string when imported as a module
+
+### Additional Command Line Options
+
+When processing a single URL, you can specify a custom subfolder name:
+```bash
+python oikotie_downloader_viaURL.py --url "https://asunnot.oikotie.fi/..." --subfolder my_custom_folder
+```
 
 ## Workflow Example
 
